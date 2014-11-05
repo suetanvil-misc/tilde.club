@@ -25,7 +25,7 @@ use constant MAX_AGE => 24;
 
 
 sub makeHtml {
-  my @newest = @_;
+  my ($maxAge, @newest) = @_;
 
 
 
@@ -33,7 +33,7 @@ sub makeHtml {
 }
 
 sub findNewest {
-  my ($maxAge, $minItems) = @_;
+  my ($maxAge) = @_;
 
   my @dates = ();
 
@@ -54,16 +54,7 @@ sub findNewest {
 
   # Discard all dates older than $maxAge seconds ago
   my $earliest = time() - $maxAge;
-  my @recent = grep { $_->[1] > $earliest } @dates;
-
-  # ...but if there are less than the minimum, we ignore that and just
-  # take the $minItems newest.
-  # if (scalar @recent < $minItems) {
-  #   @recent = @dates;
-  #   $#recent = $minItems - 1 if scalar @recent > $minItems;
-  # }
-
-  return @recent;
+  return grep { $_->[1] > $earliest } @dates;
 }
 
 
