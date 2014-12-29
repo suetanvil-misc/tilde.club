@@ -42,16 +42,45 @@ sub spew {
 }
 
 sub html {
-  my ($path, $
+  my ($root, $path, $time) = @_;
+  my $mrtime = strftime("%Y-%m-%dT%H:%M:%S%z\n", localtime($time));
+  my $htime = localtime($time);
+
+  return <<EOF
+<li><a class="homepage-link" href="$root">$path</a>
+<time datetime="$mrtime">$htime</time></li>
+EOF
+}
+
+sub json {
+  my ($root, $path, $time) = @_;
+  my $mrtime = strftime("%Y-%m-%dT%H:%M:%S%z\n", localtime($time));
+  my $htime = localtime($time);
+
+  return <<EOF
+EOF
 }
 
 {
-  my $root = "http://" . chomp(`hostname`);
+  my $root = "http://`hostname`";
+  chomp($root);
 
-  @updated = getUpdated();
-  # my $html = join("",
-  #                 map{
-  #                   "<li><a class=\"homepage-link\" href=\"$root\">$_->[0]</a>".
-  #                     "<time datetime=\""
+  my @updated = getUpdated();
+  my $html = join("", map{ html( $root, @{$_} ) } @updated);
+  spew("tilde.24h.html", <<"EOF");
+<!DOCTYPE html>
+<html><head><title>tilde.24h</title></head>
+<body>
+<h1>tilde.club home pages updated in last 24 hours</h1>
+<p>There's also <a href="tilde.24h.json">a JSON version of this data</a>;
+it's all updated once a minute, so hold yer damn horses, people. Also, times
+are in the server's time zone (GMT, it appears).</p>
+<ul>$html</ul>
+</body>
+</html>
+EOF
+
+  my $json = join("", map{ json( @{$_} ) } @updated);
+  
 
 }
