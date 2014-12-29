@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use File::Find;
+no warnings 'File::Find';
 use POSIX 'strftime';
 use File::Basename;
 
@@ -14,6 +15,9 @@ sub getUpdated {
   my @updated = ();
 
   for my $home (glob "/home/*") {
+    my $ph = "$home/public_html";
+    next unless -r $ph;
+
     my $latest = 0;
     my $uname = basename($home);
     find(sub {
@@ -21,7 +25,7 @@ sub getUpdated {
                $atime,$mtime,$ctime,$blksize,$blocks)
              = stat($_);
            $latest = $mtime if $latest < $mtime;
-         }, "$home/public_html");
+         }, $ph);
     push @updated, [$home, $latest] if $latest >= THEN;
   }
 
@@ -40,7 +44,7 @@ sub spew {
   close($fh);
 }
 
-sub xmltime { strftime("%Y-%m-%dT%H:%M:%S%z\n", localtime($_[0])); }
+sub xmltime { strftime('%Y-%m-%dT%H:%M:%S%z', localtime($_[0])); }
 
 sub html {
   my ($root, $user, $time) = @_;
@@ -64,7 +68,7 @@ EOF
 }
 
 {
-  my $root = "http://`hostname`";
+  my $root = 'http://' . `hostname`;
   chomp($root);
 
   my @updated = getUpdated();
@@ -82,6 +86,6 @@ are in the server's time zone (GMT, it appears).</p>
 </html>
 EOF
 
-  my $json = join("", map{ json( @{$_} ) } @updated);
+  my $json = join("", map{ json( $root, @{$_} ) } @updated);
   spew("tilde.24h.json", "{ \"pagelist\" : [ $json ] }");
 }
