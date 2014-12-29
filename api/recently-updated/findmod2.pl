@@ -9,20 +9,18 @@ use POSIX 'strftime';
 use constant THEN => time() - 24*60*60;
 #use constant ROOT => '';
 
-# Search through the public_html directories for the most recent file
-# and add the dir. path and latest update time to @updated if it is
-# more recent than 24 hours ago.
 sub getUpdated {
   my @updated = ();
 
-  for my $home (glob "/home/*/public_html") {
+  for my $home (glob "/home/*") {
     my $latest = 0;
+    my $uname = basename($home);
     find(sub {
            my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
                $atime,$mtime,$ctime,$blksize,$blocks)
              = stat($_);
            $latest = $mtime if $latest < $mtime;
-         }, $home);
+         }, "$home/public_html");
     push @updated, [$home, $latest] if $latest >= THEN;
   }
 
@@ -41,23 +39,26 @@ sub spew {
   close($fh);
 }
 
+sub xmltime { strftime("%Y-%m-%dT%H:%M:%S%z\n", localtime($_[0])); }
+
 sub html {
-  my ($root, $path, $time) = @_;
-  my $mrtime = strftime("%Y-%m-%dT%H:%M:%S%z\n", localtime($time));
+  my ($root, $user, $time) = @_;
+  my $mrtime = xmltime($time);
   my $htime = localtime($time);
 
   return <<EOF
-<li><a class="homepage-link" href="$root">$path</a>
+<li><a class="homepage-link" href="$root/~$user">$user</a>
 <time datetime="$mrtime">$htime</time></li>
 EOF
 }
 
 sub json {
-  my ($root, $path, $time) = @_;
-  my $mrtime = strftime("%Y-%m-%dT%H:%M:%S%z\n", localtime($time));
-  my $htime = localtime($time);
+  my ($root, $user, $time) = @_;
+  my $mrtime = xmltime($time);
+  my $url = "$root/~$user";
 
   return <<EOF
+{"username" : "$user", "homepage" : "$url", "modtime" : "$mrtime"},
 EOF
 }
 
@@ -81,6 +82,5 @@ are in the server's time zone (GMT, it appears).</p>
 EOF
 
   my $json = join("", map{ json( @{$_} ) } @updated);
-  
-
+  spew("tilde.24h.json", "{ \"pagelist\" : [ $json ] }");
 }
