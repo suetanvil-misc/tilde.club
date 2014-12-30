@@ -26,7 +26,7 @@ sub getUpdated {
              = stat($_);
            $latest = $mtime if $latest < $mtime;
          }, $ph);
-    push @updated, [$home, $latest] if $latest >= THEN;
+    push @updated, [$uname, $latest] if $latest >= THEN;
   }
 
   # Sort from most recent to least recent
@@ -87,5 +87,5 @@ are in the server's time zone (GMT, it appears).</p>
 EOF
 
   my $json = join("", map{ json( $root, @{$_} ) } @updated);
-  spew("tilde.24h.json", "{ \"pagelist\" : [ $json ] }");
+  spew("tilde.24h.json", "{ \"pagelist\" : [\n$json]}\n");
 }
