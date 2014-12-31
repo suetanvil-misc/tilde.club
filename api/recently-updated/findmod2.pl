@@ -8,10 +8,40 @@ no warnings 'File::Find';
 use POSIX 'strftime';
 use File::Basename;
 
-use constant THEN => time() - 24*60*60;
-#use constant ROOT => '';
+
+{
+  my $root = guessRoot();
+  my $window = 24;
+
+  my @updated = getUpdated($window);
+
+  my $html = join("", map{ html( $root, @{$_} ) } @updated);
+  spew("tilde.${window}h.html", <<"EOF");
+<!DOCTYPE html>
+<html><head><title>tilde.${window}h</title></head>
+<body>
+<h1>tilde.club home pages updated in last $window hours</h1>
+<p>There's also <a href="tilde.${window}h.json">a JSON version of this data</a>;
+it's all updated once a minute, so hold yer damn horses, people. Also, times
+are in the server's time zone (GMT, it appears).</p>
+<ul>$html</ul>
+</body>
+</html>
+EOF
+
+  my $json = join("", map{ json( $root, @{$_} ) } @updated);
+  spew("tilde.${window}h.json", "{ \"pagelist\" : [\n$json]}\n");
+}
+
+sub guessRoot {
+  my $root = `hostname`;
+  chomp $root;
+  return "http://$root/";
+}
+
 
 sub getUpdated {
+  my ($window) = @_;
   my @updated = ();
 
   for my $home (glob "/home/*") {
@@ -19,14 +49,20 @@ sub getUpdated {
     next unless -r $ph;
 
     my $latest = 0;
+    my $page = "";
     my $uname = basename($home);
     find(sub {
            my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
                $atime,$mtime,$ctime,$blksize,$blocks)
              = stat($_);
-           $latest = $mtime if $latest < $mtime;
+           return unless -f;
+           if($latest < $mtime) {
+             $latest = $mtime;
+             $page = $File::Find::name;
+           }
          }, $ph);
-    push @updated, [$uname, $latest] if $latest >= THEN;
+    push @updated, [$uname, $latest, $page]
+      if $latest >= $window*60*60;
   }
 
   # Sort from most recent to least recent
@@ -47,45 +83,26 @@ sub spew {
 sub xmltime { strftime('%Y-%m-%dT%H:%M:%S%z', localtime($_[0])); }
 
 sub html {
-  my ($root, $user, $time) = @_;
+  my ($root, $user, $time, $file) = @_;
   my $mrtime = xmltime($time);
   my $htime = localtime($time);
 
   return <<EOF
-<li><a class="homepage-link" href="$root/~$user">$user</a>
-<time datetime="$mrtime">$htime</time></li>
+<li>
+  <a href="${root}~${user}">$user</a>
+  (<a href="${root}~${file}">$file</a>)
+  <time datetime="$mrtime">$htime</time>
+</li>
 EOF
 }
 
 sub json {
   my ($root, $user, $time) = @_;
   my $mrtime = xmltime($time);
-  my $url = "$root/~$user";
+  my $url = "${root}~${user}";
 
   return <<EOF
 {"username" : "$user", "homepage" : "$url", "modtime" : "$mrtime"},
 EOF
 }
 
-{
-  my $root = 'http://' . `hostname`;
-  chomp($root);
-
-  my @updated = getUpdated();
-  my $html = join("", map{ html( $root, @{$_} ) } @updated);
-  spew("tilde.24h.html", <<"EOF");
-<!DOCTYPE html>
-<html><head><title>tilde.24h</title></head>
-<body>
-<h1>tilde.club home pages updated in last 24 hours</h1>
-<p>There's also <a href="tilde.24h.json">a JSON version of this data</a>;
-it's all updated once a minute, so hold yer damn horses, people. Also, times
-are in the server's time zone (GMT, it appears).</p>
-<ul>$html</ul>
-</body>
-</html>
-EOF
-
-  my $json = join("", map{ json( $root, @{$_} ) } @updated);
-  spew("tilde.24h.json", "{ \"pagelist\" : [\n$json]}\n");
-}
