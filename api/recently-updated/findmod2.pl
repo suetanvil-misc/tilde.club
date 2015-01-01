@@ -63,7 +63,7 @@ my $Verbose;
 <!DOCTYPE html>
 <html><head><title>$domain Updates (last $window hours)</title></head>
 <body>
-<h1>${domain} home pages updated in last $window hours</h1>
+<h1>$domain home pages updated in last $window hours</h1>
 <p> Times are in the server's time zone.</p>
 <p> There's also <a href="tilde.${window}h.json">a JSON version of this
     data</a>.</p>
