@@ -23,7 +23,9 @@ use File::Spec;
 use Getopt::Long;
 
 my $Verbose;
-{
+{ # This is in braces to eliminate unnecessary globals:
+
+  # Command-line arguments:
   my $domain = guessRoot();
   my $root = undef;
   my $window = 24;
@@ -45,6 +47,7 @@ my $Verbose;
     exit 0;
   }
 
+  # Compute $root from $domain if not set
   $root ||= "http://$domain/";
 
   say("$0: domain=$domain, root=$root, since-hours=$window, destdir=$destdir",
