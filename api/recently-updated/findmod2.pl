@@ -11,8 +11,11 @@ use File::Spec;
 
 
 {
-  my $root = guessRoot();
+  my $domain = guessRoot();
+  my $root = undef;
   my $window = 24;
+
+  $root ||= "http://$domain/";
 
   my @updated = getUpdated($window);
 
@@ -21,10 +24,10 @@ use File::Spec;
 <!DOCTYPE html>
 <html><head><title>tilde.${window}h</title></head>
 <body>
-<h1>tilde.club home pages updated in last $window hours</h1>
-<p>There's also <a href="tilde.${window}h.json">a JSON version of this data</a>;
-it's all updated once a minute, so hold yer damn horses, people. Also, times
-are in the server's time zone (GMT, it appears).</p>
+<h1>${domain} home pages updated in last $window hours</h1>
+<p> Times are in the server's time zone.</p>
+<p> There's also <a href="tilde.${window}h.json">a JSON version of this
+    data</a>.</p>
 <ul>$html</ul>
 </body>
 </html>
@@ -35,9 +38,9 @@ EOF
 }
 
 sub guessRoot {
-  my $root = `hostname`;
-  chomp $root;
-  return "http://$root/";
+  my $domain = `hostname`;
+  chomp $domain;
+  return $domain;
 }
 
 
