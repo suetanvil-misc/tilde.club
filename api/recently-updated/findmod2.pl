@@ -9,20 +9,38 @@ use POSIX 'strftime';
 use File::Basename;
 use File::Spec;
 
+use Getopt::Long;
 
 {
   my $domain = guessRoot();
   my $root = undef;
   my $window = 24;
+  my $help;
+  my $destdir = ".";
+  my $updatePeriod = 60;
+
+  my @opts = ('domain=s'        => \$domain,
+              'root=s'          => \$root,
+              'since-hours=i',  => \$window,
+              'destdir=s'       => \$destdir,
+              'update-every=i', => \$updatePeriod,
+              'help'            => \$help);
+  GetOptions(@opts) or die "Invalid option; try '--help'.\n";
+
+  if ($help) {
+    print "USAGE: $0 " . join(" ", map{"[--$_]"} grep{/^[a-z]/} @opts) . "\n";
+    exit 0;
+  }
 
   $root ||= "http://$domain/";
 
-  my @updated = getUpdated($window);
+  do {
+    my @updated = getUpdated($window);
 
-  my $html = join("", map{ html( $root, @{$_} ) } @updated);
-  spew("tilde.${window}h.html", <<"EOF");
+    my $html = join("", map{ html( $root, @{$_} ) } @updated);
+    spew("$destdir/tilde.${window}h.html", <<"EOF");
 <!DOCTYPE html>
-<html><head><title>tilde.${window}h</title></head>
+<html><head><title>$domain Updates (last $window hours)</title></head>
 <body>
 <h1>${domain} home pages updated in last $window hours</h1>
 <p> Times are in the server's time zone.</p>
@@ -33,8 +51,11 @@ use File::Spec;
 </html>
 EOF
 
-  my $json = join("", map{ json( $root, @{$_} ) } @updated);
-  spew("tilde.${window}h.json", "{ \"pagelist\" : [\n$json]}\n");
+    my $json = join("", map{ json( $root, @{$_} ) } @updated);
+    spew("$destdir/tilde.${window}h.json", "{ \"pagelist\" : [\n$json]}\n");
+
+    sleep($updatePeriod) if $updatePeriod > 0;
+  } while($updatePeriod > 0);
 }
 
 sub guessRoot {
