@@ -1,5 +1,16 @@
 #!/usr/bin/perl
 
+# Search /home/*/public_html for recently modified files and create a
+# list of recently updated sites, both in HTML and JSON.  It is
+# written in stock Perl 5.16 and has no CPAN dependencies.
+#
+# When invoked with '--update-every XX', will rescan and recreate the
+# index every XX seconds.  --domain will change the system domain and
+# --root the URL root; --root is derived from --domain if not
+# specified.
+#
+# Copyright (C) 2014 Chris Reuter.  GPL v2, no warranty.
+
 use strict;
 use warnings;
 
@@ -11,6 +22,7 @@ use File::Spec;
 
 use Getopt::Long;
 
+my $Verbose;
 {
   my $domain = guessRoot();
   my $root = undef;
@@ -24,6 +36,7 @@ use Getopt::Long;
               'since-hours=i',  => \$window,
               'destdir=s'       => \$destdir,
               'update-every=i', => \$updatePeriod,
+              'verbose'         => \$Verbose,
               'help'            => \$help);
   GetOptions(@opts) or die "Invalid option; try '--help'.\n";
 
@@ -34,8 +47,13 @@ use Getopt::Long;
 
   $root ||= "http://$domain/";
 
+  say("$0: domain=$domain, root=$root, since-hours=$window, destdir=$destdir",
+      " update-every=$updatePeriod");
+
   do {
+    say("Scanning...");
     my @updated = getUpdated($window);
+#    say("F
 
     my $html = join("", map{ html( $root, @{$_} ) } @updated);
     spew("$destdir/tilde.${window}h.html", <<"EOF");
@@ -58,13 +76,22 @@ EOF
   } while($updatePeriod > 0);
 }
 
+# Print the arguments to STDOUT with a newline only if $Verbose is
+# true.
+sub say {
+  print join(" ", @_), "\n" if $Verbose;
+}
+
+# Return the best guess domain-name for this computer.
 sub guessRoot {
   my $domain = `hostname`;
   chomp $domain;
   return $domain;
 }
 
-
+# Search /home/*/public_html for files modified within $window hours.
+# Returns a list containing, for each match, a sublist with username,
+# most recent modification time and the most-recently-modified file.
 sub getUpdated {
   my ($window) = @_;
   my $then = time() - $window*60*60;
@@ -98,6 +125,7 @@ sub getUpdated {
   return @updated;
 }
 
+# Write $text to the file named $filename
 sub spew {
   my ($filename, $text) = @_;
 
@@ -107,8 +135,11 @@ sub spew {
   close($fh);
 }
 
+# Return the given time (in seconds from the epoch) as an XML-format
+# string.
 sub xmltime { strftime('%Y-%m-%dT%H:%M:%S%z', localtime($_[0])); }
 
+# Construct an HTML list item
 sub html {
   my ($root, $user, $time, $file) = @_;
   my $mrtime = xmltime($time);
@@ -123,6 +154,7 @@ sub html {
 EOF
 }
 
+# Construct a JSON item for the arguments
 sub json {
   my ($root, $user, $time, $file) = @_;
   my $mrtime = xmltime($time);
