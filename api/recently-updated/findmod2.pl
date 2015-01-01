@@ -7,6 +7,7 @@ use File::Find;
 no warnings 'File::Find';
 use POSIX 'strftime';
 use File::Basename;
+use File::Spec;
 
 
 {
@@ -42,6 +43,8 @@ sub guessRoot {
 
 sub getUpdated {
   my ($window) = @_;
+  my $then = time() - $window*60*60;
+
   my @updated = ();
 
   for my $home (glob "/home/*") {
@@ -58,11 +61,11 @@ sub getUpdated {
            return unless -f;
            if($latest < $mtime) {
              $latest = $mtime;
-             $page = $File::Find::name;
+             $page = File::Spec->abs2rel($File::Find::name, $ph);
            }
          }, $ph);
     push @updated, [$uname, $latest, $page]
-      if $latest >= $window*60*60;
+      if $latest >= $then;
   }
 
   # Sort from most recent to least recent
@@ -90,19 +93,23 @@ sub html {
   return <<EOF
 <li>
   <a href="${root}~${user}">$user</a>
-  (<a href="${root}~${file}">$file</a>)
+  (<a href="${root}~${user}/${file}">$file</a>)
   <time datetime="$mrtime">$htime</time>
 </li>
 EOF
 }
 
 sub json {
-  my ($root, $user, $time) = @_;
+  my ($root, $user, $time, $file) = @_;
   my $mrtime = xmltime($time);
   my $url = "${root}~${user}";
+  my $fileUrl = "$url/$file";
 
   return <<EOF
-{"username" : "$user", "homepage" : "$url", "modtime" : "$mrtime"},
+{  "username" : "$user",
+   "homepage" : "$url",
+   "modtime" : "$mrtime",
+   "changed" : "$fileUrl"},
 EOF
 }
 
