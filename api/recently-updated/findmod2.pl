@@ -29,7 +29,7 @@ my $Verbose;
   my $window = 24;
   my $help;
   my $destdir = ".";
-  my $updatePeriod = 60;
+  my $updatePeriod = 0;
 
   my @opts = ('domain=s'        => \$domain,
               'root=s'          => \$root,
@@ -53,7 +53,7 @@ my $Verbose;
   do {
     say("Scanning...");
     my @updated = getUpdated($window);
-#    say("F
+    say("Found", scalar @updated, "items.");
 
     my $html = join("", map{ html( $root, @{$_} ) } @updated);
     spew("$destdir/tilde.${window}h.html", <<"EOF");
